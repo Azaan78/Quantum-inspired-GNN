@@ -1,7 +1,7 @@
 # Importing graph and node
 from Node import Node
 from Graph import Graph
-import math
+import math, random
 
 # Instantiating graph
 graph = Graph()
@@ -17,6 +17,12 @@ Q1.energy = 1
 Q2.energy = 7
 Q3.energy = 3
 Q4.energy = 10
+
+# Initialise phases
+Q1.phase = 0.0
+Q2.phase = 1.2
+Q3.phase = 2.1
+Q4.phase = 0.8
 
 # Initialisin weights
 Q1.weights[Q2] = 0.8
@@ -57,7 +63,9 @@ graph.connect_nodes(Q2, Q4)
 
 graph.connect_nodes(Q3, Q4)
 
-
+# Other variables
+Learning_rate = 0.001
+Losses = []
 
 #Math functions
 '''Used to ensure that values being passed in the hidden layer are 0 or higher, no negative numbers (less than zero)'''
@@ -70,7 +78,7 @@ def Sigmoid(z):
     return 1 / (1 + (math.exp(-z) ) )
 
 '''This is forward propagation using neurons in a graph format instead of a forward feeding format'''
-def propagate(graph):
+def forward_propagate(graph):
 
     new_energies = {}
 
@@ -82,11 +90,12 @@ def propagate(graph):
 
         # Looping through neighbour weights
         for neighbour in node.neighbours:
-            print(neighbour)
             weight = node.weights[neighbour]
             
-            # Neuron calculation (sum(a*b)+bias)
-            z += neighbour.energy * weight
+            # Neuron calculation (sum(a*b)+bias) with added use of phases
+            phase_difference = node.phase - neighbour.phase
+            interference = math.cos(phase_difference)
+            z += neighbour.energy * weight * interference
 
         # Add bias
         z += node.bias
@@ -108,7 +117,7 @@ def generate_true_future(graph):
 
     # Loops through each node in the graph
     for node in graph.nodes:
-        neigbour_total = 0
+        neighbour_total = 0
 
         # Keeps running total of node neighbours
         for neighbour in node.neighbours:
@@ -128,23 +137,130 @@ def get_predictions(graph):
         predictions.append(node.energy)
     return predictions
 
-
-
-'''Calculates a loss by using MSE (Mean Square Error)'''
+'''Calculates a loss by using MSE (Mean Square Error), mainly used for developer debugging'''
 def calculate_loss(y_pred, y_true):
     loss = 0
-    # Loops through list of predicted and tru values and runs MSE calculation
+    # Loops through list of predicted and true values and runs MSE calculation
     for pred, true in zip(y_pred, y_true):
         loss += (pred - true) ** 2
 
-    return loss
+    return (loss / len(y_pred))
 
 
 
-'''------ Main Loop ------'''
-for i in range (4):
-    propagate(graph)
+'''This is back propagation where we will be calculating a loss and comparing to the AI's results and altering the according weights and biases to improve the model'''
+def back_propagate(graph, y_pred, y_true):
+    # Assigns each node in teh graph an index and loops through then to calculate a loss
+    for node_index, node in enumerate(graph.nodes):
+        error = y_pred[node_index] - y_true[node_index]
 
-    for node in graph.nodes:
-        print(node.name, node.energy)
+        # Multiply loss (error) by each neighbour energy (calculates a gradient to see how much the mistake contributes)
+        for neighbour in node.neighbours:
+            gradient = error * neighbour.energy
+            node.weights[neighbour] -= (Learning_rate * gradient)
+        # Overwrites biases with the new 'learned' values
+        node.bias -= (Learning_rate * error)
 
+
+
+'''------ Main Loop option 1 ------'''
+def Single_step_training():
+    # 4 full forward and back prop loops
+    for i in range(4):
+
+        # Calculates what values should be before forward prop even runs
+        y_true = generate_true_future(graph)
+        
+        print(f"------ LOOP {i+1} ------")
+        print()
+
+        # Used for debugging
+        print('normal value before any change')
+        # Prints all details about each node
+        for node in graph.nodes:
+            print("Name:", node.name, "Energy:", node.energy, "Bias:", node.bias, "Phase:", node.phase)
+            # Prints each neighbour of the node and their weights
+            temp = []
+            for neighbour, weight in node.weights.items():
+                temp.append(f"{node.name} -> {neighbour.name} : {weight}")
+            print("Neighbours and weights:",temp)
+            print()
+
+        # Forward propagation and reandomly increments or decrements phase after propagation to model unstable qubits
+        forward_propagate(graph)
+        for node in graph.nodes:
+            node.phase += random.uniform(-0.05,0.05)
+
+        # Used for debugging
+        print('after forward prop')
+        # Prints all details about each node
+        print('normal value before any change')
+        for node in graph.nodes:
+            print("Name:", node.name, "Energy:", node.energy, "Bias:", node.bias, "Phase:", node.phase)
+            # Prints each neighbour of the node and their weights
+            temp = []
+            for neighbour, weight in node.weights.items():
+                temp.append(f"{node.name} -> {neighbour.name} : {weight}")
+            print("Neighbours and weights:",temp)
+            print()
+
+        # Gets prediction of graph after forward prop to compare with 'true values' from before forward prop
+        y_pred = get_predictions(graph)
+        loss = calculate_loss(y_pred, y_true)
+        Losses.append(loss)
+
+        # Used for debugging (NO LONGER NEEDED)
+        #print('Loss calculation')
+        #print(loss)
+
+        back_propagate(graph, y_pred, y_true)
+
+        # Used for debugging
+        print('after back prop')
+        print('normal value before any change')
+        # Prints all details about each node
+        for node in graph.nodes:
+            print("Name:", node.name, "Energy:", node.energy, "Bias:", node.bias, "Phase:", node.phase)
+            # Prints each neighbour of the node and their weights
+            temp = []
+            for neighbour, weight in node.weights.items():
+                temp.append(f"{node.name} -> {neighbour.name} : {weight}")
+            print("Neighbours and weights:",temp)
+            print()
+        
+
+    #(NO LONGER NEEDED)
+    #for node in graph.nodes:
+    #    print(node.name, node.energy, node.bias, node.weights)
+
+
+
+'''------ Main Loop option 2 ------'''
+def Multi_step_training():
+    for i in range (4):
+        y_true = generate_true_future(graph)
+        for i in range(4):
+            forward_propagate(graph)
+        y_pred = get_predictions(graph)
+        loss = calculate_loss(y_pred, y_true)
+        back_propagate(graph, y_pred, y_true)
+
+        for node in graph.nodes:
+            print(node.name, node.energy)
+
+
+# Just using single step training for now, I have no intent of using multi step training as of yet
+Single_step_training()
+# Prints out losses in list format
+print("If loss trends downwards then learning has been demonstrated:")
+for index, loss in enumerate(Losses):
+    print(f"Loss {index + 1}:",loss)
+
+print()
+
+# Prints sigmoid version and none sigmoid version of qubits results
+for node in graph.nodes:
+    confidence = Sigmoid(node.energy)
+    print(node.name, "Energy:", node.energy)
+    print(node.name, "Confidence:", confidence)
+    print()
