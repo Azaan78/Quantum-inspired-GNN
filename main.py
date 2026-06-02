@@ -6,6 +6,8 @@ import math, random
 # Instantiating graph
 graph = Graph()
 
+from graph_representation import draw_graph, plot_loss, plot_phase_evolution
+
 # Instantiating qubits
 Q1 = Node("Q1")
 Q2 = Node("Q2")
@@ -163,6 +165,13 @@ def back_propagate(graph, y_pred, y_true):
 
 
 
+phase_history = {
+    "Q1": [],
+    "Q2": [],
+    "Q3": [],
+    "Q4": []
+}
+
 '''------ Main Loop option 1 ------'''
 def Single_step_training():
     # 4 full forward and back prop loops
@@ -190,6 +199,9 @@ def Single_step_training():
         forward_propagate(graph)
         for node in graph.nodes:
             node.phase += random.uniform(-0.05,0.05)
+
+        for node in graph.nodes:
+            phase_history[node.name].append(node.phase)
 
         # Used for debugging
         print('after forward prop')
@@ -264,3 +276,7 @@ for node in graph.nodes:
     print(node.name, "Energy:", node.energy)
     print(node.name, "Confidence:", confidence)
     print()
+
+draw_graph(graph)
+plot_loss(Losses)
+plot_phase_evolution(phase_history)
