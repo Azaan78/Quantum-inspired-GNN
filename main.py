@@ -2,11 +2,11 @@
 from Node import Node
 from Graph import Graph
 import math, random
+import copy
 
 # Instantiating graph
 graph = Graph()
-
-from graph_representation import draw_graph, plot_loss, plot_phase_evolution
+from graph_representation import visualise_project
 
 # Instantiating qubits
 Q1 = Node("Q1")
@@ -94,7 +94,7 @@ def forward_propagate(graph):
         for neighbour in node.neighbours:
             weight = node.weights[neighbour]
             
-            # Neuron calculation (sum(a*b)+bias) with added use of phases
+            # Neuron calculation (sum(a*b)+bias) with added use of phases, uses cos to simulate implications of phase on the qubits
             phase_difference = node.phase - neighbour.phase
             interference = math.cos(phase_difference)
             z += neighbour.energy * weight * interference
@@ -164,13 +164,16 @@ def back_propagate(graph, y_pred, y_true):
         node.bias -= (Learning_rate * error)
 
 
-
+# Saves history of phases
 phase_history = {
     "Q1": [],
     "Q2": [],
     "Q3": [],
     "Q4": []
 }
+
+# Saves graph before any changes
+initial_graph = copy.deepcopy(graph)
 
 '''------ Main Loop option 1 ------'''
 def Single_step_training():
@@ -277,6 +280,5 @@ for node in graph.nodes:
     print(node.name, "Confidence:", confidence)
     print()
 
-draw_graph(graph)
-plot_loss(Losses)
-plot_phase_evolution(phase_history)
+# Draws 4 graphs from GNN resutls
+visualise_project(initial_graph,graph,Losses,phase_history)
