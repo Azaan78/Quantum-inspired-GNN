@@ -1,0 +1,24 @@
+{
+  "node_classification": {
+    "num_nodes": 500,
+    "num_classes": 6,
+    "final_train_acc": 1.0,
+    "final_val_acc": 0.6578947368421053,
+    "test_acc": 0.743421052631579,
+    "random_chance": 0.16666666666666666
+  },
+  "graph_classification": {
+    "num_graphs": 200,
+    "train_size": 150,
+    "test_size": 50,
+    "final_train_acc": 0.9866666666666667,
+    "test_acc": 0.98,
+    "random_chance": 0.5
+  },
+  "interference_kernels": "see docs/milestone4_interference_kernels.png",
+  "decoherence_effect": {
+    "0.0": 0.7125,
+    "0.15": 0.73125,
+    "0.5": 0.7375
+  }
+}
