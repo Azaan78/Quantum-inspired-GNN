@@ -8,11 +8,9 @@ An experimental framework investigating whether quantum-inspired phase dynamics 
 
 > ⚠️ **Current Status**
 >
-> This repository is currently at **Milestone 1 (Research Prototype)**.
+> This repository has completed **Milestone 2 (Formal GNN Layer)** and **Milestone 3 (Real Dataset Integration)** in full, and part of **Milestone 4 (Advanced Quantum-Inspired Dynamics)**.
 >
-> The current implementation focuses on graph construction, quantum-inspired dynamics, learning mechanisms, and visualisation.
->
-> Formal Graph Neural Network layers, benchmark datasets, and large-scale evaluation frameworks are planned for future milestones.
+> The original Milestone 1 prototype (`Node.py`, `Graph.py`, `main.py`, `graph_representation.py`) is untouched and still runs standalone. All new work lives in `layers/`, `models/`, `training/`, `utils/`, and `tests/`, and is documented in full in **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** (the design/maths) and **[docs/RESULTS.md](docs/RESULTS.md)** (what was actually run, and the honest caveats around it).
 
 ---
 
@@ -21,7 +19,8 @@ An experimental framework investigating whether quantum-inspired phase dynamics 
 * [Overview](#overview)
 * [Motivation](#motivation)
 * [Why This Project?](#why-this-project)
-* [Current Features](#current-features)
+* [Milestone 1 Features (original prototype)](#current-features)
+* [Milestones 2-4: What Was Added](#milestones-2-4-what-was-added)
 * [Architecture](#architecture)
 * [Visualisation Dashboard](#visualisation-dashboard)
 * [Research Questions](#research-questions)
@@ -46,14 +45,14 @@ The **Quantum-Inspired Graph Learning Framework** is an exploratory machine lear
 
 The framework models a graph of interconnected computational nodes where each node maintains internal quantum-inspired state variables:
 
-* Energy
-* Phase
+* Energy / Feature vector (generalised from a single scalar to a full vector in Milestone 2)
+* Phase (now a *trained* parameter as of Milestone 2 - see docs/ARCHITECTURE.md)
 * Trainable Weights
 * Trainable Biases
 
 Information propagates through the graph using weighted neighbour interactions, while phase-dependent interference dynamically modulates communication between nodes.
 
-The long-term goal is to evolve this prototype into a full **Quantum-Inspired Graph Neural Network (QGNN)** capable of learning from real-world graph datasets and benchmarking against traditional GNN architectures.
+The long-term goal is to evolve this prototype into a full **Quantum-Inspired Graph Neural Network (QGNN)** capable of learning from real-world graph datasets and benchmarking against traditional GNN architectures. Milestones 2 and 3 are the first concrete steps toward that goal: a formal, stackable layer, and real classification tasks (node classification and graph classification) rather than the single hand-built toy example.
 
 ---
 
@@ -88,6 +87,8 @@ Rather than attempting to simulate a true quantum computer, this framework inves
 ---
 
 # Current Features
+
+*(Milestone 1 - the original prototype, `Node.py` / `Graph.py` / `main.py` / `graph_representation.py`, unchanged)*
 
 ## Graph-Based Architecture
 
@@ -140,9 +141,23 @@ Automatically generates:
 
 ---
 
+# Milestones 2-4: What Was Added
+
+*(New code, `layers/` / `models/` / `training/` / `utils/` / `tests/`. Full technical writeup: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).)*
+
+* **A formal, stackable message-passing layer** (`layers/message_passing.py`) generalising Milestone 1's single hand-written propagation step into a reusable layer, usable for graphs of any size - not just the original 4-qubit example.
+* **Node feature vectors** - every node now carries a full feature vector, not a single scalar `energy`.
+* **Phase as a learnable parameter** - phase is no longer pure random drift; it has an analytic gradient (`layers/quantum_interference.interference_gradient`, verified numerically in `tests/`) and is updated by backpropagation like any other parameter.
+* **A non-local learning rule** - because phase is shared across every layer in a stack, its gradient sums contributions from errors several hops away, not just a node's immediate neighbour (full derivation in `docs/ARCHITECTURE.md`, section 3).
+* **Real dataset integration** (Milestone 3): loaders for Cora, CiteSeer, PubMed (node classification) and MUTAG (graph classification) in `utils/graph_builder.py`, plus a full training/evaluation pipeline for both task types (`training/trainer.py`). See `docs/RESULTS.md` for an important caveat on what was actually run against real vs. synthetic data.
+* **Milestone 4 (partial)**: alternative interference kernels, a decoherence-inspired damping term, and a complex-valued amplitude representation - see the table in `docs/ARCHITECTURE.md`, section 5, for exactly what's done vs. left as future work.
+* **Unit tests with gradient checking** (`tests/test_layers.py`) - every custom backward pass is checked against a numerical (finite-difference) gradient, not just "loss goes down".
+
+---
+
 # Architecture
 
-Current propagation pipeline:
+Milestone 1's propagation pipeline (unchanged, still runs via `main.py`):
 
 ```text
 Input Graph
@@ -168,6 +183,14 @@ Loss Calculation
      ▼
 Weight & Bias Update
 ```
+
+Milestones 2-4's formal layer (see `docs/ARCHITECTURE.md` for the full equations):
+
+```text
+H_out = activation( (A_hat ⊙ Interference(phase) ⊙ decoherence) @ H_in @ W + b )
+```
+
+stacked into a `models.quantum_gnn.QuantumGNN`, used either directly for node classification or wrapped in a `GraphClassifier` (readout + linear head) for graph classification.
 
 ---
 
@@ -201,6 +224,13 @@ Tracks phase changes across all nodes over time.
 
 ![Initial Graph](docs/phase.png)
 
+## Milestones 2-4 result plots
+
+Node classification, graph classification, interference-kernel comparison,
+and decoherence-rate sweep plots are in `docs/milestone2_node_classification.png`,
+`docs/milestone3_graph_classification.png`, and `docs/milestone4_interference_kernels.png` -
+see `docs/RESULTS.md` for the numbers behind them.
+
 ---
 
 # Research Questions
@@ -216,6 +246,8 @@ This project currently investigates the following questions:
 ### 4. Can quantum-inspired propagation mechanisms compete with traditional GNN architectures?
 
 ### 5. How should quantum-inspired concepts be integrated into graph learning systems?
+
+Milestones 2-4 give a first, honest (synthetic-data) pass at questions 1 and 3: `docs/RESULTS.md` shows phase-modulated message passing clearing random chance by a wide margin on both node and graph classification, and shows decoherence damping giving a small, consistent (not yet statistically validated) improvement. Questions 2, 4 and 5 remain open for Milestone 5+ once the real benchmark datasets are reachable.
 
 ---
 
@@ -246,49 +278,43 @@ This milestone establishes the first complete working prototype.
 
 ## Milestone 2 — Formal Graph Neural Network Layer
 
-**Status:** 🔄 Planned
+**Status:** ✅ Complete
 
-Objectives:
-
-* [ ] Formal message passing layer
-* [ ] Node feature vectors
-* [ ] Improved learning architecture
-* [ ] Modular propagation framework
-* [ ] Scalable graph support
+* [x] Formal message passing layer (`layers/message_passing.py`)
+* [x] Node feature vectors (every node is now a vector, not a scalar)
+* [x] Improved learning architecture (real backprop + Adam, `training/`)
+* [x] Modular propagation framework (`layers/` + `models/quantum_gnn.py`, shared by both task types)
+* [x] Scalable graph support (NumPy/SciPy adjacency matrices, `layers/aggregation.py` - tested up to 500 nodes, see `docs/RESULTS.md`)
 
 ---
 
 ## Milestone 3 — Real Dataset Integration
 
-**Status:** 📋 Planned
+**Status:** ✅ Complete (loaders + pipeline written and tested; see caveat below)
 
-Potential datasets:
+Datasets targeted:
 
-* Cora
-* CiteSeer
-* PubMed
-* MUTAG
+* Cora, CiteSeer, PubMed (node classification)
+* MUTAG (graph classification)
 
-Objectives:
+* [x] Node classification pipeline (`training/trainer.NodeClassifierTrainer`)
+* [x] Graph classification pipeline (`training/trainer.GraphClassifierTrainer`)
+* [x] Dataset preprocessing (`utils/graph_builder.py` - real-dataset loaders + synthetic generators)
+* [x] Performance evaluation (`docs/RESULTS.md`)
 
-* [ ] Node classification
-* [ ] Graph classification
-* [ ] Dataset preprocessing
-* [ ] Performance evaluation
+> **Caveat:** the real dataset loaders (`load_cora`, `load_citeseer`, `load_pubmed`, `load_mutag`) are written against the datasets' standard public formats but were built in a sandboxed environment that couldn't reach the download hosts. They're untested against the literal files - see `docs/RESULTS.md` for what was actually verified (a structurally-faithful synthetic stand-in) and run them from a machine with normal internet access to confirm against the real data.
 
 ---
 
 ## Milestone 4 — Advanced Quantum-Inspired Dynamics
 
-**Status:** 📋 Planned
+**Status:** 🔄 Partially complete
 
-Objectives:
-
-* [ ] Complex-valued representations
-* [ ] Quantum-walk-inspired propagation
-* [ ] Enhanced phase modelling
-* [ ] Decoherence-inspired mechanisms
-* [ ] Alternative interference functions
+* [x] Complex-valued representations (`layers/quantum_interference.complex_amplitude`, `complex_interference_matrix`)
+* [ ] Quantum-walk-inspired propagation *(not started - see docs/ARCHITECTURE.md section 5 for why this needs its own design)*
+* [x] Enhanced phase modelling (phase is now trained, not just drifted)
+* [x] Decoherence-inspired mechanisms (`layers/quantum_interference.decoherence_factor`)
+* [x] Alternative interference functions (squared-cosine, Gaussian)
 
 ---
 
@@ -302,6 +328,8 @@ Objectives:
 * [ ] Compare convergence behaviour
 * [ ] Stability analysis
 * [ ] Learning performance evaluation
+* [ ] Confirm Milestone 3 results against the real Cora/CiteSeer/PubMed/MUTAG files (currently only verified on structurally-faithful synthetic data - see docs/RESULTS.md)
+* [ ] Multi-seed statistical significance test for the Milestone 4 decoherence result
 
 ---
 
@@ -324,11 +352,11 @@ Objectives:
 ```text
 Milestone 1  ██████████ Complete
 
-Milestone 2  ███░░░░░░░ In Progress
+Milestone 2  ██████████ Complete
 
-Milestone 3  ░░░░░░░░░░ Planned
+Milestone 3  █████████░ Complete (pending real-data confirmation)
 
-Milestone 4  ░░░░░░░░░░ Planned
+Milestone 4  ██████░░░░ Partial
 
 Milestone 5  ░░░░░░░░░░ Planned
 
@@ -346,13 +374,29 @@ Milestone 6  ░░░░░░░░░░ Planned
 ## Install Dependencies
 
 ```bash
-pip install matplotlib networkx
+pip install -r requirements.txt
 ```
 
-## Run Project
+(`numpy`, `scipy`, `networkx`, `matplotlib`, `pytest` - see `requirements.txt`.)
+
+## Run Milestone 1 (original prototype)
 
 ```bash
 python main.py
+```
+
+## Run Milestones 2-4
+
+```bash
+python -m pytest tests/ -v          # unit tests + gradient checks
+python demo_milestones_2_3_4.py     # trains on synthetic data, writes docs/*.png + docs/milestone_results.json
+```
+
+To use the real datasets once you have normal internet access:
+
+```python
+from utils.graph_builder import load_cora
+data = load_cora()  # downloads + caches into data/planetoid/
 ```
 
 ---
@@ -362,17 +406,39 @@ python main.py
 ```text
 quantum-inspired-graph-learning/
 │
-├── Node.py
-├── Graph.py
-├── main.py
-├── graph_representation.py
+├── Node.py                     # Milestone 1 (unchanged)
+├── Graph.py                    # Milestone 1 (unchanged)
+├── main.py                     # Milestone 1 (unchanged)
+├── graph_representation.py     # Milestone 1 (unchanged)
+├── demo_milestones_2_3_4.py    # Runs everything below, produces docs/*.png + results
+├── requirements.txt
 ├── README.md
 │
+├── layers/
+│   ├── quantum_interference.py # interference kernels, decoherence, complex amplitudes
+│   ├── aggregation.py          # adjacency matrix construction + normalisation
+│   ├── message_passing.py      # the formal layer (forward + backward)
+│   └── update.py               # activations + graph-level readout functions
+│
+├── models/
+│   └── quantum_gnn.py          # QuantumGNN (stacked layers), LinearHead, GraphClassifier
+│
+├── training/
+│   ├── loss.py                 # softmax cross-entropy (+ original MSE)
+│   ├── optimizer.py            # SGD, Adam
+│   └── trainer.py              # NodeClassifierTrainer, GraphClassifierTrainer
+│
+├── utils/
+│   └── graph_builder.py        # real dataset loaders + synthetic dataset generators
+│
+├── tests/
+│   └── test_layers.py          # unit tests + numerical gradient checks
+│
 └── docs/
-    ├── initial_graph.png
-    ├── final_graph.png
-    ├── loss_curve.png
-    └── phase_evolution.png
+    ├── ARCHITECTURE.md         # full design + maths writeup
+    ├── RESULTS.md              # what was run, numbers, honest caveats
+    ├── initial.png / final.png / loss.png / phase.png   (Milestone 1)
+    └── milestone2_*.png / milestone3_*.png / milestone4_*.png / milestone_results.json
 ```
 
 ---
